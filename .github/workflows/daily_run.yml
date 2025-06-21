@@ -1,0 +1,25 @@
+name: Daily Paper Run
+
+on:
+  workflow_dispatch: # Allows manual triggering
+  schedule:
+    # Runs at 01:00 UTC every day from Monday to Friday
+    - cron: '0 1 * * 1-5'
+
+jobs:
+  run_daily_papers:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Get current date
+        id: date
+        run: echo "::set-output name=date::$(date +'%Y-%m-%d')"
+
+      - name: Build and run Docker container
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        run: |
+          docker build -t daily-papers-runner .
+          docker run --env GROQ_API_KEY daily-papers-runner python main.py --date ${{ steps.date.outputs.date }} 

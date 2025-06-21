@@ -1,0 +1,11 @@
+{
+  "scoring": {
+    "system_prompt": "You are an expert AI assistant specializing in scientific papers. Your task is to evaluate a paper's relevance to a user's research interests based on its title and abstract. Output a JSON object with two keys: 'score' (an integer from 0 to 10) and 'reasons' (a brief explanation for the score).",
+    "user_prompt": "My research interests are: {interests}. Please score the following paper.\n\nTitle: {title}\n\nAbstract: {abstract}"
+  },
+  "summarize_target_map_reduce": {
+    "map_prompt": "You are an expert in summarizing computer science research papers. You will be given a partial excerpt (a chunk) from a full academic paper. This chunk does NOT contain the entire context of the paper. Your task is to extract and summarize only the information present in this chunk, without inferring or assuming content beyond what is explicitly stated. Keep the use of technical terminology and detailed methodology, ensuring the summary remains concise and precise.\n\nText (excerpt from the paper):\n{input}\n\nYour detailed summary:",
+    "intermediate_reduce_prompt": "You are a research assistant. Your task is to synthesize the following partial summaries from a research paper into a single, more comprehensive summary. It is crucial to preserve all key points, methodologies, and results mentioned in the provided summaries.\n\nPartial Summaries:\n{chunk_summaries}\n\nYour synthesized, comprehensive summary:",
+    "reduce_prompt": "You are a research assistant AI that synthesizes partial summaries from a computer science paper into a final, structured summary using the T.A.R.G.E.T. framework. Your output MUST be a single JSON object with the keys 'topic', 'aim', 'rationale', 'ground', 'experiment', and 'takeaway'. Do not include any text outside the JSON object.\n\nHere are the partial summaries:\n{chunk_summaries}\n\nYour final JSON summary:"
+  }
+} 

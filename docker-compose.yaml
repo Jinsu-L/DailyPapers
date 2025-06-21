@@ -1,0 +1,9 @@
+version: "3"
+services:
+  dailypapers:
+    build: .
+    volumes:
+      - ./config:/app/config
+      - ./output:/app/output
+    environment:
+      - CONFIG_PATH=/app/config/sources.yaml

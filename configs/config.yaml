@@ -1,0 +1,117 @@
+# Arxiv 크롤러 설정
+arxiv_crawler:
+  enabled: true
+  queries:
+    - "cat:cs.IR" # Information Retrieval 카테고리
+  max_results: 200 # 오늘 올라온 논문을 모두 찾기 위해 조금 넉넉하게 설정
+
+# ACL Anthology 크롤러 설정 (향후 추가)
+acl_anthology_crawler:
+  enabled: false
+  queries:
+    - "information retrieval"
+  max_results: 50
+
+# 데이터 저장 경로
+storage:
+  crawled_path: "data/crawled"
+  
+# 리포트 생성 경로
+reporter:
+  report_path: "reports"
+  top_n: 10
+
+# 분류 및 스코어링 설정
+classifier:
+  keyword_weights:
+    # 1순위
+    "information retrieval": 3
+    "search": 3
+    "retrieval": 3
+    "retriever": 3
+    "semantic search": 3
+    "passage retrieval": 3
+    "dense retrieval": 3
+    "query": 3
+    "queries": 3
+    "ranking": 3
+    "rerank": 3
+    "learning to rank": 3
+    "ltr": 3
+    "listwise": 3
+    "pointwise": 3
+    "pairwise": 3
+    "relevance": 3
+    "relevance feedback": 3
+
+    # 2순위
+    "rag": 2
+    "retrieval augmented generation": 2
+    "user behavior": 2
+    "user action": 2
+    "click model": 2
+    "click": 2
+    "ctr": 2
+    "click through rate": 2
+    "click-through rate": 2
+    "cvr": 2
+    "conversion rate": 2
+
+    # 3순위 
+    "recommend": 1
+    "recommendation": 1
+    "recommender system": 1
+    "personalization": 1
+    "shopping": 1
+    "commerce": 1
+    "e-commerce": 1
+    "natural language processing": 1
+    "nlp": 1
+
+
+# Groq API 및 모델 공통 설정
+groq_settings:
+  # 이 환경변수에서 API 키를 읽어옵니다.
+  api_key_env: "GROQ_API_KEY"
+  # 전역 폴백 리스트를 제거하고, 각 서비스별로 세분화된 리스트를 사용합니다.
+
+# LLM 기반 스코어링 설정
+llm_scorer:
+  enabled: true
+  # 스코어링에 사용할 기본 모델 (속도와 성능의 균형)
+  model: "llama3-8b-8192"
+  model_fallback_list:
+    - "llama-3.1-8b-instant"  # 1차 폴백: 가장 빠른 모델
+    - "gemma2-9b-it"          # 2차 폴백: 안정적인 모델
+  # 관심분야에 대한 설명. 이 내용을 기반으로 LLM이 점수를 매깁니다.
+  interests: "I have a strong interest in Information Retrieval (IR) and Search technologies, including query processing and ranking models like Learning to Rank (LTR). While I have experience in the e-commerce domain, my interests are broad and not limited to it. I am also keenly interested in related areas such as natural language processing (NLP), recommender systems, and user behavior analysis, especially click models."
+  # 개발/테스트 시 LLM으로 처리할 최대 논문 수. (0 또는 미설정 시 기본값 20개)
+  # 이 값을 줄이면 (예: 5) 테스트 속도가 크게 향상됩니다.
+  processing_limit: 10
+
+# 요약기 설정
+summarizer:
+  enabled: true
+  # Map 단계: 사용자가 선택한 모델을 기본으로 하되, TPM이 높은 모델을 최우선 폴백으로 지정
+  map_model: "llama3-8b-8192"
+  map_fallback_list:
+    - "gemma2-9b-it"          # 1차 폴백: TPM 한도가 높아 안정적
+    - "llama-3.1-8b-instant"  # 2차 폴백: 빠른 모델
+  # Reduce 단계: 최종 결과물의 품질을 위해 최고 성능 모델을 기본으로 사용
+  reduce_model: "llama3-70b-8192"
+  reduce_fallback_list:
+    - "llama3-8b-8192"        # 1차 폴백: 균형잡힌 모델
+    - "gemma2-9b-it"          # 2차 폴백: 안정적인 모델
+  temperature: 0.2
+  chunk_size: 4000
+  chunk_overlap: 400
+  payload_limit: 12000 # Reduce 단계에서 API에 전달할 최대 텍스트 길이 (안전 마진 포함)
+  # 텍스트가 너무 길 경우를 대비한 최대 토큰 설정
+  max_tokens_for_summary: 16000
+  # 전체 텍스트 요약을 위한 최대 문자 수. 이보다 길면 초록만 요약합니다.
+  max_text_length_for_full_summary: 100000
+
+# 로깅 설정
+logging:
+  level: "INFO" # 로그 레벨 (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+  file: "logs/dailypapers.log" # 로그 파일 경로 
