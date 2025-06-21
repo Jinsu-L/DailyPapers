@@ -4,10 +4,10 @@ on:
   workflow_dispatch: # 수동 실행을 허용
     inputs:
       date:
-        description: 'YYYY-MM-DD 형식의 날짜 (비워두면 오늘 날짜)'
+        description: 'YYYY-MM-DD 형식의 날짜 (비워두면 어제 날짜를 자동으로 사용)'
         required: false
   schedule:
-    # 매주 월-금 01:00 UTC에 실행
+    # 매주 월-금 01:00 UTC에 실행 (전날 논문을 수집)
     - cron: '0 1 * * 1-5'
 
 jobs:
@@ -33,7 +33,8 @@ jobs:
           if [ -n "${{ github.event.inputs.date }}" ]; then
             echo "date=${{ github.event.inputs.date }}" >> $GITHUB_OUTPUT
           else
-            echo "date=$(date -u +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+            # 스케줄 실행 시 또는 수동 실행에서 날짜 미지정 시, 어제 날짜를 사용
+            echo "date=$(date -u -d "yesterday" +'%Y-%m-%d')" >> $GITHUB_OUTPUT
           fi
 
       - name: Run main script
