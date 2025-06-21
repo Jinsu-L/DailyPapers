@@ -1,25 +1,56 @@
 name: Daily Paper Run
 
 on:
-  workflow_dispatch: # Allows manual triggering
+  workflow_dispatch: # 수동 실행을 허용
+    inputs:
+      date:
+        description: 'YYYY-MM-DD 형식의 날짜 (비워두면 오늘 날짜)'
+        required: false
   schedule:
-    # Runs at 01:00 UTC every day from Monday to Friday
+    # 매주 월-금 01:00 UTC에 실행
     - cron: '0 1 * * 1-5'
 
 jobs:
-  run_daily_papers:
+  run_and_publish:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+      - name: Checkout code repository
+        uses: actions/checkout@v4
+        with:
+          path: main_repo # 코드를 main_repo 디렉토리에 체크아웃
 
-      - name: Get current date
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: pip install -r main_repo/requirements.txt
+      
+      - name: Get target date
         id: date
-        run: echo "::set-output name=date::$(date +'%Y-%m-%d')"
+        run: |
+          if [ -n "${{ github.event.inputs.date }}" ]; then
+            echo "date=${{ github.event.inputs.date }}" >> $GITHUB_OUTPUT
+          else
+            echo "date=$(date -u +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+          fi
 
-      - name: Build and run Docker container
+      - name: Run main script
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: |
-          docker build -t daily-papers-runner .
-          docker run --env GROQ_API_KEY daily-papers-runner python main.py --date ${{ steps.date.outputs.date }} 
+          cd main_repo
+          python main.py --date ${{ steps.date.outputs.date }}
+
+      - name: Push to results repository
+        uses: cpina/github-action-push-to-another-repository@main
+        env:
+          API_TOKEN_GITHUB: ${{ secrets.PAT }}
+        with:
+          source-directory: 'main_repo/reports'
+          destination-github-username: 'Jinsu-L'
+          destination-repository-name: 'DailyIR'
+          user-email: ${{ github.actor }}@users.noreply.github.com
+          commit-message: "Update reports for ${{ steps.date.outputs.date }}"
+          target-branch: main 
