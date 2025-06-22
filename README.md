@@ -63,7 +63,7 @@ DailyPapers는 Arxiv에서 매일 새로운 논문을 수집하고, LLM을 사�
     ```
 
 4.  **환경 변수 설정:**
-    LLM(Groq)을 사용하려면 API 키가 필요합니다. 터미널에서 환경 변수를 설정하거나 `.env` 파일을 생성하세요.
+    LLM(Groq)을 사용하려면 API 키가 필요합니다. 터미널에서 환경 변수를 설정하세요.
     ```bash
     export GROQ_API_KEY="your_groq_api_key_here"
     ```
@@ -84,9 +84,9 @@ DailyPapers는 Arxiv에서 매일 새로운 논문을 수집하고, LLM을 사�
 
 결과는 `reports/`, `data/crawled/`, `logs/` 디렉토리에 생성됩니다.
 
-## GitHub Actions를 통한 자동화
+## 논문 리포트 생성 배치
 
-이 프로젝트는 GitHub Actions를 사용하여 매일 자동으로 논문을 수집하고 처리합니다.
+GitHub Actions를 사용하여 논문을 수집하고 처리합니다.
 
 ### ⚙️ Automation Schedule
 

@@ -60,4 +60,17 @@ jobs:
           GITHUB_ACTOR: Jinsu-L
           API_TOKEN_GITHUB: ${{ secrets.PAT }}
         run: |
-          python scripts/uploader.py --report-date ${{ steps.get_date.outputs.TARGET_DATE }} --data-dir ./data 
+          python scripts/uploader.py --report-date ${{ steps.get_date.outputs.TARGET_DATE }} --data-dir ./data
+
+      - name: Send notification email
+        if: success()
+        env:
+          MAIL_RECIPIENTS: ${{ secrets.MAIL_RECIPIENTS }}
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: |
+          REPORT_FILE_PATH="reports/${{ steps.get_date.outputs.TARGET_DATE }}.md"
+          DEST_REPO_SLUG="Jinsu-L/DailyIR"
+          python scripts/mail_sender.py \
+            --report-path "${REPORT_FILE_PATH}" \
+            --repo-slug "${DEST_REPO_SLUG}" 

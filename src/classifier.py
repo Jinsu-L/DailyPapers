@@ -57,12 +57,12 @@ class LLMClassifier(AbstractClassifier, BaseLLMService):
     """LLM을 사용하여 논문의 점수를 매기는 분류기"""
 
     def __init__(self, config: dict, groq_config: dict):
-    """
-        LLMClassifier를 초기화합니다.
+        """
+            LLMClassifier를 초기화합니다.
 
-        :param config: llm_scorer에 대한 설정 딕셔너리
-        :param groq_config: groq_settings에 대한 공통 설정 딕셔너리
-    """
+            :param config: llm_scorer에 대한 설정 딕셔너리
+            :param groq_config: groq_settings에 대한 공통 설정 딕셔너리
+        """
         combined_config = {**groq_config, **config}
         super().__init__(config=combined_config)
         
