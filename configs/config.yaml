@@ -3,6 +3,7 @@ arxiv_crawler:
   enabled: true
   queries:
     - "cat:cs.IR" # Information Retrieval 카테고리
+    - "cat:cs.CL" # Computation and Language
   max_results: 200 # 오늘 올라온 논문을 모두 찾기 위해 조금 넉넉하게 설정
 
 # ACL Anthology 크롤러 설정 (향후 추가)
@@ -15,21 +16,21 @@ acl_anthology_crawler:
 # 데이터 저장 경로
 storage:
   crawled_path: "data/crawled"
+  scored_path: "data/scores"
   
 # 리포트 생성 경로
 reporter:
   report_path: "reports"
-  top_n: 10
+  top_n: 5
 
 # 분류 및 스코어링 설정
 classifier:
   keyword_weights:
     # 1순위
     "information retrieval": 3
-    "search": 3
-    "retrieval": 3
     "retriever": 3
     "semantic search": 3
+    "sparse retrieval": 3
     "passage retrieval": 3
     "dense retrieval": 3
     "query": 3
@@ -56,19 +57,45 @@ classifier:
     "click-through rate": 2
     "cvr": 2
     "conversion rate": 2
+    "retrieval": 2
 
     # 3순위 
     "recommend": 1
-    "recommendation": 1
-    "recommender system": 1
     "personalization": 1
     "shopping": 1
     "commerce": 1
     "e-commerce": 1
-    "natural language processing": 1
-    "nlp": 1
+    "web search": 1
+    "rank": 1
+    "search": 1
+
+    # 주요학회명 ... workshop, challenge등도 보고 싶어서..
+    "acl": 2
+    "sigir": 2
+    "www": 1
+    "cikm": 1
+    "kdd": 1
+    "ijcai": 1
+    "aaai": 1
+    "iclr": 1
+    "naacl": 1
+    "emnlp": 2
+    "recsys": 1
+    "wsdm": 1
+    "nips": 1
+    "neurips": 1
+    "icml": 1
+    "ecir": 1
+    "ictir": 1
+    "coling": 1
+    "trec": 2
+
+    # 한국어 관련
+    "korea": 1
 
 
+    
+    
 # Groq API 및 모델 공통 설정
 groq_settings:
   # 이 환경변수에서 API 키를 읽어옵니다.
@@ -84,10 +111,11 @@ llm_scorer:
     - "llama-3.1-8b-instant"  # 1차 폴백: 가장 빠른 모델
     - "gemma2-9b-it"          # 2차 폴백: 안정적인 모델
   # 관심분야에 대한 설명. 이 내용을 기반으로 LLM이 점수를 매깁니다.
-  interests: "I have a strong interest in Information Retrieval (IR) and Search technologies, including query processing and ranking models like Learning to Rank (LTR). While I have experience in the e-commerce domain, my interests are broad and not limited to it. I am also keenly interested in related areas such as natural language processing (NLP), recommender systems, and user behavior analysis, especially click models."
+  # interests: "I have a strong interest in Information Retrieval (IR) and Search technologies, including query processing and ranking models like Learning to Rank (LTR). While I have experience in the e-commerce domain, my interests are broad and not limited to it. I am also keenly interested in related areas such as natural language processing (NLP), data mining, and user behavior analysis, especially click models. little interest in recommender systems." 
+  interests: "I have a strong interest in Information Retrieval (IR) and Search technologies, with a particular focus on query understanding, ranking models (e.g., Learning to Rank), and user behavior modeling such as click models. My background includes experience in the e-commerce domain, but my interests are not limited to it. I'm also engaged in Natural Language Processing (NLP), data mining, and related topics. While I occasionally explore recommender systems, my primary focus is on information retrieval, especially in areas that require deep semantic understanding and real-time relevance optimization." 
   # 개발/테스트 시 LLM으로 처리할 최대 논문 수. (0 또는 미설정 시 기본값 20개)
   # 이 값을 줄이면 (예: 5) 테스트 속도가 크게 향상됩니다.
-  processing_limit: 10
+  processing_limit: 50
 
 # 요약기 설정
 summarizer:

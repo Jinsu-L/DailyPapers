@@ -1,7 +1,7 @@
 import os
 import json
 import logging
-import time # 지연시간을 위한 time 모듈 import
+import time
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_groq import ChatGroq
 from langchain_core.messages import HumanMessage
@@ -64,7 +64,7 @@ class CSPaperSummarizer:
         with open(prompt_path, 'r', encoding='utf-8') as f:
             self.prompts = json.load(f)["summarize_target_map_reduce"]
 
-        # 더 안정적인 RecursiveCharacterTextSplitter로 변경
+        # RecursiveCharacterTextSplitter로 chunking
         self.splitter = RecursiveCharacterTextSplitter(
             chunk_size=self.config.get("chunk_size", 4000),
             chunk_overlap=self.config.get("chunk_overlap", 400),
@@ -104,9 +104,6 @@ class CSPaperSummarizer:
 
         intermediate_prompt = self.prompts["intermediate_reduce_prompt"]
         final_prompt = self.prompts["reduce_prompt"]
-        
-        # PAYLOAD_LIMIT을 인스턴스 변수에서 가져오도록 수정
-        # PAYLOAD_LIMIT = 12000 # 청크들을 합쳤을 때의 최대 길이 (안전 마진 포함)
 
         current_summaries = [s for s in chunk_summaries if s]
 
@@ -143,7 +140,7 @@ class CSPaperSummarizer:
                 if reduced_summary:
                     next_level_summaries.append(reduced_summary)
                 # 여기에도 지연을 추가하여 reduce 단계의 연속 호출 방지
-                time.sleep(6)
+                time.sleep(8)
             
             current_summaries = next_level_summaries
             if not current_summaries:

@@ -143,6 +143,7 @@ cython_debug/
 /data/
 /reports/
 /site/
+dailyIR/
 
 # IDE / Editor specific
 .idea/

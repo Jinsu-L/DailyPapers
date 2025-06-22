@@ -1,8 +1,10 @@
 import arxiv
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import List, Dict, Any
 from src.base import AbstractCrawler
+from pytz import timezone as pytz_timezone
+import argparse
 
 class ArxivCrawler(AbstractCrawler):
     """
@@ -11,21 +13,31 @@ class ArxivCrawler(AbstractCrawler):
     """
     source_name = "arxiv"
 
-    def fetch(self, queries: List[str], max_results: int = 100, target_date: datetime.date = None) -> List[Dict[str, Any]]:
+    def fetch_by_time_window(self, queries: List[str], max_results: int = 100, end_date_utc: datetime.date = None, days: int = 1, end_hour_et: int = 14) -> List[Dict[str, Any]]:
         """
-        주어진 쿼리 목록을 사용하여 Arxiv에서 논문을 검색합니다.
-
-        :param queries: 검색할 키워드 또는 카테고리 목록 (예: ["ti:information retrieval", "cat:cs.IR"])
-        :param max_results: 가져올 최대 결과 수
-        :param target_date: 논문을 필터링할 특정 날짜. None이면 오늘 날짜를 사용합니다.
-        :return: 표준화된 논문 정보 딕셔너리 리스트
+        ET 기준 특정 시간 윈도우에 제출된 논문을 검색합니다.
+        예: 월요일 KST 실행 -> ET 일요일 20시 공개분 -> ET 목 14:00 ~ 금 14:00 제출분
         """
         search_query = " OR ".join(f"({q})" for q in queries)
         
-        if target_date is None:
-            target_date = datetime.now(timezone.utc).date()
+        if end_date_utc is None:
+            end_date_utc = datetime.now(timezone.utc).date()
 
-        # 최신 논문을 가져오기 위해 정렬 기준 설정
+        et_tz = pytz_timezone('US/Eastern')
+        
+        # ET 기준 종료 시각 설정
+        end_dt_et_naive = datetime.combine(end_date_utc, datetime.min.time()).replace(hour=end_hour_et)
+        end_dt_et = et_tz.localize(end_dt_et_naive)
+        
+        # UTC로 변환
+        end_dt_utc = end_dt_et.astimezone(timezone.utc)
+        
+        # UTC 기준 시작 시각 설정
+        start_dt_utc = end_dt_utc - timedelta(days=days)
+
+        logging.info(f"Executing Arxiv search for papers submitted between {start_dt_utc.strftime('%Y-%m-%d %H:%M:%S UTC')} and {end_dt_utc.strftime('%Y-%m-%d %H:%M:%S UTC')}")
+        
+        client = arxiv.Client()
         search = arxiv.Search(
             query=search_query,
             max_results=max_results,
@@ -34,19 +46,78 @@ class ArxivCrawler(AbstractCrawler):
         )
 
         results = []
-        logging.info(f"Executing Arxiv search for papers submitted on {target_date} with query: {search_query}")
-        
         try:
-            for r in search.results():
-                submitted_date = r.published.date()
+            for r in client.results(search):
+                # r.published는 이미 UTC 시간대로 가정 (arxiv 라이브러리 특성)
+                submitted_dt_utc = r.published
 
-                # Stop once we see older papers.
-                if submitted_date < target_date:
-                    logging.info(f"Reached papers from before {target_date}. Stopping.")
+                if submitted_dt_utc < start_dt_utc:
+                    logging.info(f"Reached papers from before {start_dt_utc.strftime('%Y-%m-%d %H:%M:%S UTC')}. Stopping.")
                     break
                 
-                # We only want papers published today.
-                if submitted_date == target_date:
+                if start_dt_utc <= submitted_dt_utc < end_dt_utc:
+                    item = {
+                        "title": r.title,
+                        "abstract": r.summary.replace('\\n', ' '),
+                        "url": r.entry_id,
+                        "pdf_url": r.pdf_url,
+                        "arxiv_id": r.entry_id.split('/')[-1],
+                        "authors": [author.name for author in r.authors],
+                        "submitted": r.published.strftime("%Y-%m-%d %H:%M:%S"),
+                        "source": self.source_name,
+                        "comment": r.comment,
+                    }
+                    if item not in results:
+                        results.append(item)
+        except arxiv.UnexpectedEmptyPageError:
+            logging.info("Reached the end of available results from Arxiv API.")
+        except Exception as e:
+            logging.error(f"Failed to fetch results from Arxiv API: {e}", exc_info=True)
+        
+        logging.info(f"Found {len(results)} valid papers from Arxiv for the specified time window.")
+        return results
+
+    def fetch(self, queries: List[str], max_results: int = 100, target_date: datetime.date = None, days_to_fetch: int = 1) -> List[Dict[str, Any]]:
+        """
+        주어진 쿼리 목록을 사용하여 Arxiv에서 논문을 검색합니다.
+
+        :param queries: 검색할 키워드 또는 카테고리 목록 (예: ["ti:information retrieval", "cat:cs.IR"])
+        :param max_results: 가져올 최대 결과 수
+        :param target_date: 논문을 필터링할 기준 종료 날짜.
+        :param days_to_fetch: target_date를 포함하여 며칠 전까지의 논문을 가져올지 결정.
+        :return: 표준화된 논문 정보 딕셔너리 리스트
+        """
+        search_query = " OR ".join(f"({q})" for q in queries)
+        
+        if target_date is None:
+            target_date = datetime.now(timezone.utc).date()
+
+        start_date = target_date - timedelta(days=days_to_fetch - 1)
+        
+        logging.info(f"Executing Arxiv search for papers submitted between {start_date} and {target_date} with query: {search_query}")
+
+        # 최신 논문을 가져오기 위해 정렬 기준 설정
+        client = arxiv.Client()
+        search = arxiv.Search(
+            query=search_query,
+            max_results=max_results,
+            sort_by=arxiv.SortCriterion.SubmittedDate,
+            sort_order=arxiv.SortOrder.Descending
+        )
+
+        results = []
+        
+        try:
+            for r in client.results(search):
+                submitted_date = r.published.date()
+
+                # 검색 범위를 벗어나는 오래된 논문이 보이면 중단
+                if submitted_date < start_date:
+                    logging.info(f"Reached papers from before {start_date}. Stopping.")
+                    break
+                
+                # 검색 날짜 범위 내의 논문만 수집
+                if start_date <= submitted_date <= target_date:
                     item = {
                         "title": r.title,
                         "abstract": r.summary.replace('\n', ' '),
@@ -58,34 +129,81 @@ class ArxivCrawler(AbstractCrawler):
                         "source": self.source_name,
                         "comment": r.comment,
                     }
-                    results.append(item)
+                    # 중복 추가 방지
+                    if item not in results:
+                        results.append(item)
 
+        except arxiv.UnexpectedEmptyPageError:
+            logging.info("Reached the end of available results from Arxiv API.")
         except Exception as e:
             logging.error(f"Failed to fetch results from Arxiv API: {e}", exc_info=True)
         
-        logging.info(f"Found {len(results)} valid papers from Arxiv for {target_date}.")
+        logging.info(f"Found {len(results)} valid papers from Arxiv for the period {start_date} to {target_date}.")
         return results
 
 if __name__ == "__main__":
-    # 사용자가 요청한 검색어 기반으로 쿼리 구성
-    # ti: title, au: author, abs: abstract, cat: category
+    parser = argparse.ArgumentParser(description="Standalone Arxiv Crawler for debugging.")
+    parser.add_argument(
+        "--date",
+        type=str,
+        default=None,
+        help="Target end date to fetch papers from, in YYYY-MM-DD format. Defaults to yesterday."
+    )
+    parser.add_argument(
+        "--days",
+        type=int,
+        default=1,
+        help="Number of days to fetch papers for, ending on the target date. Defaults to 1."
+    )
+    parser.add_argument(
+        "--window",
+        action='store_true',
+        help="Use the time-window based fetch method (fetch_by_time_window)."
+    )
+    args = parser.parse_args()
+
+    target_date_obj = None
+    if args.date:
+        try:
+            target_date_obj = datetime.strptime(args.date, "%Y-%m-%d").date()
+        except ValueError:
+            print("Invalid date format for --date. Please use YYYY-MM-DD.")
+            exit(1)
+    else:
+        target_date_obj = datetime.now(timezone.utc).date() - timedelta(days=1)
+    
     user_queries = [
-        "ti:\"information retrieval\"", 
-        "ti:retrieval", 
-        "ti:click", 
-        "abs:\"commerce domain\" AND abs:ml",
-        "cat:cs.IR" # Information Retrieval 카테고리
+        "cat:cs.IR", # Information Retrieval
+        # "cat:cs.CL", # Computation and Language
     ]
     
-    # Basic logging for standalone script execution
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
     crawler = ArxivCrawler()
-    papers = crawler.fetch(queries=user_queries, max_results=50)
+
+    if args.window:
+        logging.info(f"Fetching papers using time window of {args.days} day(s) ending on {target_date_obj.strftime('%Y-%m-%d')} at 14:00 ET")
+        papers = crawler.fetch_by_time_window(
+            queries=user_queries,
+            max_results=3000,
+            end_date_utc=target_date_obj,
+            days=args.days
+        )
+    else:
+        logging.info(f"Fetching papers for {args.days} day(s) ending on {target_date_obj.strftime('%Y-%m-%d')}")
+        papers = crawler.fetch(
+            queries=user_queries, 
+            max_results=3000, 
+            target_date=target_date_obj,
+            days_to_fetch=args.days
+        )
     
-    logging.info(f"Found {len(papers)} papers.")
-    for paper in papers:
-        logging.info(f"ID: {paper['arxiv_id']}")
-        logging.info(f"Title: {paper['title']}")
-        logging.info(f"URL: {paper['url']}")
-        logging.info("-" * 20) 
+    if papers:
+        logging.info(f"Found {len(papers)} papers.")
+        for i, paper in enumerate(papers):
+            logging.info(f"--- Paper {i+1} ---")
+            logging.info(f"  ID: {paper['arxiv_id']}")
+            logging.info(f"  Title: {paper['title']}")
+            logging.info(f"  Submitted: {paper['submitted']}")
+    else:
+        logging.info("No papers found for the specified criteria.") 

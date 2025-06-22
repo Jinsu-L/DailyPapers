@@ -41,7 +41,7 @@ class KeywordClassifier:
                     reasons.append(f"Found '{keyword}' (score: +{weight})")
             
             paper['score'] = score
-            paper['reasons'] = reasons
+            paper['keyword_reasons'] = reasons
             scored_papers.append(paper)
             
         # 점수가 0보다 큰 논문만 필터링하고, 점수 기준으로 내림차순 정렬
@@ -57,12 +57,12 @@ class LLMClassifier(AbstractClassifier, BaseLLMService):
     """LLM을 사용하여 논문의 점수를 매기는 분류기"""
 
     def __init__(self, config: dict, groq_config: dict):
-        """
+    """
         LLMClassifier를 초기화합니다.
 
         :param config: llm_scorer에 대한 설정 딕셔너리
         :param groq_config: groq_settings에 대한 공통 설정 딕셔너리
-        """
+    """
         combined_config = {**groq_config, **config}
         super().__init__(config=combined_config)
         
@@ -108,17 +108,17 @@ class LLMClassifier(AbstractClassifier, BaseLLMService):
             response = self.score_paper(paper)
             
             if response and 'score' in response and 'reasons' in response:
-                paper['score'] = response.get('score', 0)
-                paper['reasons'] = [response.get('reasons', 'N/A')]
+                paper['llm_score'] = response.get('score', 0)
+                paper['llm_reason'] = response.get('reasons', 'N/A')
             else:
-                paper['score'] = 0
-                paper['reasons'] = ["LLM scoring failed."]
+                paper['llm_score'] = 0
+                paper['llm_reason'] = "LLM scoring failed."
             
             scored_papers.append(paper)
             
         filtered_and_sorted = sorted(
-            [p for p in scored_papers if p['score'] > 0],
-            key=lambda x: x['score'],
+            [p for p in scored_papers if p.get('llm_score', 0) > 0],
+            key=lambda x: x.get('llm_score', 0),
             reverse=True
         )
         return filtered_and_sorted

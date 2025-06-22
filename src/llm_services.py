@@ -7,7 +7,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_excep
 class BaseLLMService:
     """
     Groq LLM 서비스를 직접 사용하기 위한 기본 클래스.
-    API 키 로딩, LLM 객체 초기화, 폴백 및 재시도 로직을 포함합니다.
+    API 키 로딩, LLM 객체 초기화, 폴백 및 재시도 로직을 포함
     """
     def __init__(self, config: dict):
         self.config = config
@@ -27,7 +27,7 @@ class BaseLLMService:
         self.model_fallback_list.insert(0, self.model_name)
 
     def _invoke_with_fallback(self, messages: List[Dict[str, str]], is_json: bool = False) -> Optional[str]:
-        """모델 폴백 및 재시도 로직으로 LLM을 호출합니다."""
+        """모델 폴백 및 재시도 로직으로 LLM을 호출"""
         for model in self.model_fallback_list:
             try:
                 logging.info(f"Attempting to use model: {model}")
