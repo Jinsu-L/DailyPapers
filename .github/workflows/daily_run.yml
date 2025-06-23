@@ -52,7 +52,7 @@ jobs:
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: |
-          python main.py --date ${{ steps.get_date.outputs.TARGET_DATE }}
+          python main.py --date ${{ steps.get_date.outputs.TARGET_DATE }} --window-based-fetch
 
       - name: Upload report and data
         if: success()

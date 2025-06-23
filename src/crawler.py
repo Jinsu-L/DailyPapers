@@ -87,19 +87,35 @@ class ArxivCrawler(AbstractCrawler):
         :param days_to_fetch: target_date를 포함하여 며칠 전까지의 논문을 가져올지 결정.
         :return: 표준화된 논문 정보 딕셔너리 리스트
         """
-        search_query = " OR ".join(f"({q})" for q in queries)
-        
+        search_query_parts = []
+        for q in queries:
+            if ":" in q:
+                search_query_parts.append(f"({q})")
+            else:
+                search_query_parts.append(f"(ti:{q} OR abs:{q})")
+
+        query = ' OR '.join(search_query_parts)
+
         if target_date is None:
             target_date = datetime.now(timezone.utc).date()
 
-        start_date = target_date - timedelta(days=days_to_fetch - 1)
-        
-        logging.info(f"Executing Arxiv search for papers submitted between {start_date} and {target_date} with query: {search_query}")
+        from_date = target_date - timedelta(days=days_to_fetch - 1)
+        to_date = target_date
 
-        # 최신 논문을 가져오기 위해 정렬 기준 설정
+        if from_date and to_date:
+            from_date_str = from_date.strftime('%Y%m%d')
+            to_date_str = to_date.strftime('%Y%m%d')
+            # Ensure from_date and to_date are the same for a single day fetch
+            if from_date_str == to_date_str:
+                query += f" AND submittedDate:[{from_date_str}000000 TO {to_date_str}235959]"
+            else:
+                query += f" AND submittedDate:[{from_date_str}000000 TO {to_date_str}235959]"
+
+        logging.info(f"Executing Arxiv search with query: {query}")
+
         client = arxiv.Client()
         search = arxiv.Search(
-            query=search_query,
+            query=query,
             max_results=max_results,
             sort_by=arxiv.SortCriterion.SubmittedDate,
             sort_order=arxiv.SortOrder.Descending
@@ -109,36 +125,33 @@ class ArxivCrawler(AbstractCrawler):
         
         try:
             for r in client.results(search):
-                submitted_date = r.published.date()
+                # The date filtering is now part of the query, but we can double-check
+                published_date = r.published.date()
+                if from_date and to_date:
+                    if not (from_date <= published_date <= to_date):
+                        continue
 
-                # 검색 범위를 벗어나는 오래된 논문이 보이면 중단
-                if submitted_date < start_date:
-                    logging.info(f"Reached papers from before {start_date}. Stopping.")
-                    break
-                
-                # 검색 날짜 범위 내의 논문만 수집
-                if start_date <= submitted_date <= target_date:
-                    item = {
-                        "title": r.title,
-                        "abstract": r.summary.replace('\n', ' '),
-                        "url": r.entry_id,
-                        "pdf_url": r.pdf_url,
-                        "arxiv_id": r.entry_id.split('/')[-1],
-                        "authors": [author.name for author in r.authors],
-                        "submitted": r.published.strftime("%Y-%m-%d %H:%M:%S"),
-                        "source": self.source_name,
-                        "comment": r.comment,
-                    }
-                    # 중복 추가 방지
-                    if item not in results:
-                        results.append(item)
+                item = {
+                    "title": r.title,
+                    "abstract": r.summary.replace('\n', ' '),
+                    "url": r.entry_id,
+                    "pdf_url": r.pdf_url,
+                    "arxiv_id": r.entry_id.split('/')[-1],
+                    "authors": [author.name for author in r.authors],
+                    "submitted": r.published.strftime("%Y-%m-%d %H:%M:%S"),
+                    "source": self.source_name,
+                    "comment": r.comment,
+                }
+                # 중복 추가 방지
+                if item not in results:
+                    results.append(item)
 
         except arxiv.UnexpectedEmptyPageError:
             logging.info("Reached the end of available results from Arxiv API.")
         except Exception as e:
             logging.error(f"Failed to fetch results from Arxiv API: {e}", exc_info=True)
         
-        logging.info(f"Found {len(results)} valid papers from Arxiv for the period {start_date} to {target_date}.")
+        logging.info(f"Found {len(results)} valid papers from Arxiv for the period {from_date} to {to_date}.")
         return results
 
 if __name__ == "__main__":
@@ -174,7 +187,7 @@ if __name__ == "__main__":
     
     user_queries = [
         "cat:cs.IR", # Information Retrieval
-        # "cat:cs.CL", # Computation and Language
+        "cat:cs.CL", # Computation and Language
     ]
     
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')

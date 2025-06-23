@@ -11,4 +11,5 @@ langchain-text-splitters==0.3.8
 pytz==2025.2
 langchain-core==0.3.63
 langchain-groq==0.3.2
-pydantic==2.11.5 
+pydantic==2.11.5
+langchain 

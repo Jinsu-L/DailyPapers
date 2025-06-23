@@ -2,14 +2,9 @@ import os
 import json
 import logging
 import time
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_groq import ChatGroq
-from langchain_core.messages import HumanMessage
-from tqdm import tqdm
 from typing import Dict, Any, Optional, List
 from groq import RateLimitError, APIError
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type, RetryError
-from langchain_text_splitters import RecursiveCharacterTextSplitter
 from .llm_services import BaseLLMService
 
 def split_text(text: str, chunk_size: int, chunk_overlap: int) -> List[str]:
@@ -64,21 +59,25 @@ class CSPaperSummarizer:
         with open(prompt_path, 'r', encoding='utf-8') as f:
             self.prompts = json.load(f)["summarize_target_map_reduce"]
 
-        # RecursiveCharacterTextSplitter로 chunking
-        self.splitter = RecursiveCharacterTextSplitter(
-            chunk_size=self.config.get("chunk_size", 4000),
-            chunk_overlap=self.config.get("chunk_overlap", 400),
-            length_function=len,
-        )
-        # split_text를 사용하여 문자열 리스트를 얻음
-        self.docs = self.splitter.split_text(self.document_content)
+        # Use the local split_text function for chunking
+        chunk_size = self.config.get("chunk_size", 4000)
+        chunk_overlap = self.config.get("chunk_overlap", 400)
+        self.docs = split_text(self.document_content, chunk_size, chunk_overlap)
         logging.info(f"The document was split into {len(self.docs)} chunks.")
 
     def summarize(self, show_progress=True) -> Optional[Dict[str, str]]:
         # 1. Map step
         logging.info(f"  > Step 3a: Mapping {len(self.docs)} chunks into summaries...")
         chunk_summaries = []
-        iterator = tqdm(self.docs, desc="    Summarizing chunks", leave=False, dynamic_ncols=True) if show_progress else self.docs
+        
+        # tqdm is removed, so we directly iterate over self.docs
+        iterator = self.docs
+        if show_progress:
+            try:
+                from tqdm import tqdm
+                iterator = tqdm(self.docs, desc="    Summarizing chunks", leave=False, dynamic_ncols=True)
+            except ImportError:
+                logging.warning("tqdm not found. Progress bar will not be shown. Please install it with 'pip install tqdm'.")
         
         map_prompt_template = self.prompts["map_prompt"]
         
