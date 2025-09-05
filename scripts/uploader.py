@@ -68,7 +68,7 @@ def find_data_files(data_dir: str, report_date: str) -> tuple[str | None, str | 
     return crawled_path, scores_path
 
 def parse_readme(content: str) -> dict:
-    """README 콘텐츠를 파싱하여 연도/월별 링크 데이터를 담은 딕셔너리로 변환합니다."""
+    """PAPERS 콘텐츠를 파싱하여 연도/월별 링크 데이터를 담은 딕셔너리로 변환합니다."""
     data = {}
     current_year, current_month = None, None
     for line in content.splitlines():
@@ -87,7 +87,7 @@ def parse_readme(content: str) -> dict:
     return data
 
 def regenerate_readme(data: dict) -> str:
-    """파싱된 데이터 딕셔너리를 사용하여 README 콘텐츠를 다시 생성합니다."""
+    """파싱된 데이터 딕셔너리를 사용하여 PAPERS 콘텐츠를 다시 생성합니다."""
     content = "# Daily Information Retrieval Papers\n\nA curated list of daily papers related to Information Retrieval.\n"
     sorted_years = sorted(data.keys(), reverse=True)
     
@@ -160,7 +160,7 @@ def main():
             shutil.copy(scores_data_path, dest_scores_folder_path)
             files_to_add.append(os.path.join('data', 'scores', os.path.basename(scores_data_path)))
 
-        readme_path = os.path.join(temp_dir, 'README.md')
+        readme_path = os.path.join(temp_dir, 'PAPERS.md')
         readme_content = ""
         if os.path.exists(readme_path):
             with open(readme_path, 'r', encoding='utf-8') as f:
@@ -177,10 +177,10 @@ def main():
             with open(readme_path, 'w', encoding='utf-8') as f:
                 f.write(new_readme_content)
         else:
-            logging.info("Link already exists in README.md. Skipping README update.")
+            logging.info("Link already exists in PAPERS.md. Skipping PAPERS update.")
 
         if readme_updated:
-            files_to_add.append('README.md')
+            files_to_add.append('PAPERS.md')
         
         run_command(['git', 'add'] + files_to_add, cwd=temp_dir)
         
