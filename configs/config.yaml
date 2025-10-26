@@ -106,10 +106,11 @@ groq_settings:
 llm_scorer:
   enabled: true
   # 스코어링에 사용할 기본 모델 (속도와 성능의 균형)
-  model: "llama3-8b-8192"
+  model: "llama-3.1-8b-instant"
   model_fallback_list:
-    - "llama-3.1-8b-instant"  # 1차 폴백: 가장 빠른 모델
-    - "gemma2-9b-it"          # 2차 폴백: 안정적인 모델
+    - "openai/gpt-oss-20b"  # 1차 폴백
+    - "openai/gpt-oss-120b"          # 2차 폴백
+    - "qwen/qwen3-32b"
   # 관심분야에 대한 설명. 이 내용을 기반으로 LLM이 점수를 매깁니다.
   # interests: "I have a strong interest in Information Retrieval (IR) and Search technologies, including query processing and ranking models like Learning to Rank (LTR). While I have experience in the e-commerce domain, my interests are broad and not limited to it. I am also keenly interested in related areas such as natural language processing (NLP), data mining, and user behavior analysis, especially click models. little interest in recommender systems." 
   interests: "I have a strong interest in Information Retrieval (IR) and Search technologies, with a particular focus on query understanding, ranking models (e.g., Learning to Rank), and user behavior modeling such as click models. My background includes experience in the e-commerce domain, but my interests are not limited to it. I'm also engaged in Natural Language Processing (NLP), data mining, and related topics. While I occasionally explore recommender systems, my primary focus is on information retrieval, especially in areas that require deep semantic understanding and real-time relevance optimization." 
@@ -121,15 +122,16 @@ llm_scorer:
 summarizer:
   enabled: true
   # Map 단계: 사용자가 선택한 모델을 기본으로 하되, TPM이 높은 모델을 최우선 폴백으로 지정
-  map_model: "llama3-8b-8192"
+  map_model: "llama-3.1-8b-instant"
   map_fallback_list:
-    - "gemma2-9b-it"          # 1차 폴백: TPM 한도가 높아 안정적
-    - "llama-3.1-8b-instant"  # 2차 폴백: 빠른 모델
+    - "openai/gpt-oss-20b"          # 1차 폴백: TPM 한도가 높아 안정적
+    - "openai/gpt-oss-120b"  # 2차 폴백: 빠른 모델
   # Reduce 단계: 최종 결과물의 품질을 위해 최고 성능 모델을 기본으로 사용
   reduce_model: "llama3-70b-8192"
   reduce_fallback_list:
-    - "llama3-8b-8192"        # 1차 폴백: 균형잡힌 모델
-    - "gemma2-9b-it"          # 2차 폴백: 안정적인 모델
+    - "llama3-8b-8192"        # 1차 폴백
+    - "gemma2-9b-it"          # 2차 폴백
+    - "qwen/qwen3-32b"
   temperature: 0.2
   chunk_size: 4000
   chunk_overlap: 400
